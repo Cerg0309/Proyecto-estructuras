@@ -1,160 +1,95 @@
 import networkx as nx
-from collections import defaultdict, deque
+from collections import deque
 
-def ford_fulkerson(G, source, sink):
-    """
-    Implementación del algoritmo Ford-Fulkerson para encontrar el flujo máximo
-    entre un nodo fuente y un nodo sumidero.
-    """
-    # Crear grafo residual
-    residual_graph = create_residual_graph(G)
-    
-    max_flow = 0
-    flow_paths = []
-    
-    # Mientras exista un camino de aumento
-    while True:
-        # Encontrar camino de aumento usando BFS
-        path, bottleneck = find_augmenting_path_bfs(residual_graph, source, sink)
-        
-        if not path:
-            break
-            
-        # Actualizar el flujo máximo
-        max_flow += bottleneck
-        
-        # Guardar información del camino
-        flow_paths.append({
-            'path': path,
-            'flow': bottleneck,
-            'total_flow': max_flow
-        })
-        
-        # Actualizar el grafo residual
-        update_residual_graph(residual_graph, path, bottleneck)
-    
-    # Calcular el flujo por cada arista
-    edge_flows = calculate_edge_flows(G, residual_graph)
-    
-    return max_flow, flow_paths, edge_flows
+class FordFulkerson:
+    def __init__(self, graph):
+        """
+        Inicializa el algoritmo con un grafo dirigido.
+        :param graph: nx.DiGraph con atributo 'flujo' en las aristas (capacidad)
+        """
+        self.G = graph
+        self.residual_graph = None
+        self.flow_paths = []
+        self.max_flow = 0
+        self.edge_flows = {}
 
-def create_residual_graph(G):
-    """Crea el grafo residual basado en el grafo original"""
-    residual = defaultdict(lambda: defaultdict(int))
-    
-    for u, v, data in G.edges(data=True):
-        # Capacidad directa (usando 'flujo' como capacidad)
-        capacity = data.get('flujo', 1)  # Default a 1 si no hay flujo
-        residual[u][v] = capacity
-        # Capacidad inversa (inicialmente 0)
-        if residual[v][u] == 0:
-            residual[v][u] = 0
-    
-    return residual
+    def find_augmenting_path(self, source, sink):
+        """Encuentra un camino de aumento usando BFS en el grafo residual."""
+        visited = {node: False for node in self.residual_graph.nodes()}
+        parent = {}
+        queue = deque([source])
+        visited[source] = True
 
-def find_augmenting_path_bfs(residual_graph, source, sink):
-    """Encuentra un camino de aumento usando BFS"""
-    visited = set()
-    queue = deque([(source, [source])])
-    
-    while queue:
-        node, path = queue.popleft()
-        
-        if node in visited:
-            continue
-            
-        visited.add(node)
-        
-        if node == sink:
-            # Encontrar el cuello de botella en el camino
-            bottleneck = float('inf')
-            for i in range(len(path) - 1):
-                capacity = residual_graph[path[i]][path[i + 1]]
-                bottleneck = min(bottleneck, capacity)
-            
-            return path, bottleneck
-        
-        # Explorar vecinos
-        for neighbor, capacity in residual_graph[node].items():
-            if neighbor not in visited and capacity > 0:
-                queue.append((neighbor, path + [neighbor]))
-    
-    return None, 0
+        while queue:
+            u = queue.popleft()
+            for v in self.residual_graph.neighbors(u):
+                if not visited[v] and self.residual_graph[u][v]['capacity'] > 0:
+                    parent[v] = u
+                    visited[v] = True
+                    if v == sink:
+                        # Reconstruir el camino
+                        path = []
+                        current = sink
+                        while current != source:
+                            path.append(current)
+                            current = parent[current]
+                        path.append(source)
+                        path.reverse()
+                        return path
+                    queue.append(v)
+        return None
 
-def update_residual_graph(residual_graph, path, flow):
-    """Actualiza el grafo residual después de encontrar un camino de aumento"""
-    for i in range(len(path) - 1):
-        u, v = path[i], path[i + 1]
-        # Reducir capacidad directa
-        residual_graph[u][v] -= flow
-        # Aumentar capacidad inversa
-        residual_graph[v][u] += flow
+    def compute_max_flow(self, source, sink):
+        """Calcula el flujo máximo desde source hasta sink."""
+        # Inicializar grafo residual 
+        self.residual_graph = nx.DiGraph()
+        for u, v, data in self.G.edges(data=True):
+            self.residual_graph.add_edge(u, v, capacity=data['flujo'])  # Cambio clave aquí
+            self.residual_graph.add_edge(v, u, capacity=0)  # Arista inversa
 
-def calculate_edge_flows(original_graph, residual_graph):
-    """Calcula el flujo por cada arista del grafo original"""
-    edge_flows = {}
-    
-    for u, v, data in original_graph.edges(data=True):
-        original_capacity = data.get('flujo', 1)
-        remaining_capacity = residual_graph[u][v]
-        flow = original_capacity - remaining_capacity
-        
-        # Asegurar que el flujo no sea negativo
-        flow = max(0, flow)
-        
-        edge_flows[(u, v)] = {
-            'flow': flow,
-            'capacity': original_capacity,
-            'utilization': (flow / original_capacity) * 100 if original_capacity > 0 else 0
-        }
-    
-    return edge_flows
+        self.max_flow = 0
+        self.flow_paths = []
+        self.edge_flows = {}
 
-def find_max_flow_paths(G, source, sink):
-    """
-    Función principal que encapsula el algoritmo Ford-Fulkerson
-    """
-    try:
-        max_flow, flow_paths, edge_flows = ford_fulkerson(G, source, sink)
-        
+        while True:
+            path = self.find_augmenting_path(source, sink)
+            if not path:
+                break
+
+            # Calcular cuello de botella
+            bottleneck = float('Inf')
+            for i in range(len(path)-1):
+                u, v = path[i], path[i+1]
+                bottleneck = min(bottleneck, self.residual_graph[u][v]['capacity'])
+
+            # Actualizar grafo residual
+            for i in range(len(path)-1):
+                u, v = path[i], path[i+1]
+                self.residual_graph[u][v]['capacity'] -= bottleneck
+                self.residual_graph[v][u]['capacity'] += bottleneck
+
+            # Guardar información del camino
+            self.flow_paths.append({
+                'path': path,
+                'flow': bottleneck,
+                'total_flow': self.max_flow + bottleneck
+            })
+            self.max_flow += bottleneck
+
+        # Calcular flujos en las aristas originales
+        for u, v, data in self.G.edges(data=True):
+            original_capacity = data['flujo'] 
+            residual_capacity = self.residual_graph[u][v]['capacity']
+            flow = original_capacity - residual_capacity
+            utilization = (flow / original_capacity) * 100 if original_capacity > 0 else 0
+            self.edge_flows[(u, v)] = {
+                'flow': flow,
+                'capacity': original_capacity,
+                'utilization': utilization
+            }
+
         return {
-            'max_flow': max_flow,
-            'flow_paths': flow_paths,
-            'edge_flows': edge_flows,
-            'algorithm': 'Ford-Fulkerson'
+            'max_flow': self.max_flow,
+            'flow_paths': self.flow_paths,
+            'edge_flows': self.edge_flows
         }
-    except Exception as e:
-        print(f"Error en Ford-Fulkerson: {e}")
-        return {
-            'max_flow': 0,
-            'flow_paths': [],
-            'edge_flows': {},
-            'algorithm': 'Ford-Fulkerson',
-            'error': str(e)
-        }
-
-# Función auxiliar para verificar si un grafo es válido para flujo máximo
-def validate_flow_graph(G, source, sink):
-    """Valida que el grafo sea apropiado para algoritmos de flujo máximo"""
-    errors = []
-    
-    if source not in G.nodes():
-        errors.append(f"El nodo fuente '{source}' no existe en el grafo")
-    
-    if sink not in G.nodes():
-        errors.append(f"El nodo sumidero '{sink}' no existe en el grafo")
-    
-    if source == sink:
-        errors.append("El nodo fuente y sumidero no pueden ser el mismo")
-    
-    # Verificar que haya al menos un camino entre source y sink
-    if source in G.nodes() and sink in G.nodes():
-        if not nx.has_path(G, source, sink):
-            errors.append(f"No existe un camino entre '{source}' y '{sink}'")
-    
-    # Verificar que las aristas tengan capacidades válidas
-    for u, v, data in G.edges(data=True):
-        if 'flujo' in data and data['flujo'] <= 0:
-            errors.append(f"La arista {u}-{v} tiene capacidad inválida: {data['flujo']}")
-    
-    return errors

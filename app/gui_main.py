@@ -154,42 +154,41 @@ class MainApp(tk.Tk):
 
         if alg == "Dijkstra":
             self.destroy()
-            import app.gui_dijkstra as djk
+            import app.gui_caminocorto.gui_dijkstra as djk
             djk.GrafoDijkstraApp(self.G, self.nodos).mainloop()
         elif alg == "Bellman-Ford":
             self.destroy()
-            import app.gui_bellman as blm
+            import app.gui_caminocorto.gui_bellman as blm
             blm.GrafoBellmanApp(self.G, self.nodos).mainloop()
         elif alg == "A* (A-Star)":
             self.destroy()
-            import app.gui_astar as ast
+            import app.gui_caminocorto.gui_astar as ast
             ast.GrafoAStarApp(self.G, self.nodos).mainloop()
         elif alg == "Floyd-Warshall":
             self.destroy()
-            import app.gui_floyd as flw
+            import app.gui_caminocorto.gui_floyd as flw
             flw.GrafoFloydApp(self.G, self.nodos).mainloop()
         else:
             messagebox.showinfo("En desarrollo", f"La funcionalidad '{alg}' estará disponible próximamente.")
 
     def ir_flujo(self):
         alg = self.algoritmos_flujo.get()
-        if alg != "Ford-Fulkerson":
-            messagebox.showinfo("En desarrollo", f"La funcionalidad '{alg}' estará disponible próximamente.")
-            return
         if self.G is None:
-            messagebox.showwarning("Archivo no cargado", "Por favor, carga un archivo CSV primero.")
+            messagebox.showwarning("Error", "Debe cargar un grafo primero")
             return
         
-        # Verificar que el grafo tenga información de flujo
-        has_flow = any('flujo' in data for _, _, data in self.G.edges(data=True))
-        if not has_flow:
-            messagebox.showwarning("Datos de flujo no encontrados", 
-                                 "El archivo CSV debe contener una columna 'flujo (und)' para usar algoritmos de flujo máximo.")
-            return
-        
-        self.destroy()
-        import app.gui_FordF as ff
-        ff.GrafoFordFulkersonApp(self.G, self.nodos).mainloop()
+        if alg == "Ford-Fulkerson":
+            self.withdraw()  # Ocultar ventana principal
+            from app.gui_flujomaximo.gui_FordF import GrafoFordFulkersonApp
+            ford_window = GrafoFordFulkersonApp(self, self.G, self.nodos)
+            ford_window.protocol("WM_DELETE_WINDOW", lambda: self._on_child_close(ford_window))
+        else:
+            messagebox.showinfo("En desarrollo", f"Algoritmo {alg} no implementado aún")
+
+    def _on_child_close(self, child_window):
+        """Manejar cierre de ventana hija"""
+        child_window.destroy()
+        self.deiconify()  # Mostrar ventana principal
 
 if __name__ == "__main__":
     app = MainApp()
