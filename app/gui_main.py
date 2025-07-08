@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from models.graph_logic import cargar_grafo
+from models.graph_logic import cargar_grafo_flujo
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -16,6 +17,7 @@ class MainApp(tk.Tk):
         self.minsize(900, 450)
         self.center_window(ancho, alto)
         self.G = None
+        self.GD = None
         self.nodos = []
         self._crear_layout()
         self._make_responsive()
@@ -140,6 +142,7 @@ class MainApp(tk.Tk):
         if file_path:
             try:
                 self.G = cargar_grafo(file_path)
+                self.GD = cargar_grafo_flujo(file_path)
                 self.nodos = sorted(list(self.G.nodes()))
                 self.visualizar_grafo_completo()
                 messagebox.showinfo("Éxito", "Archivo cargado correctamente.")
@@ -173,14 +176,18 @@ class MainApp(tk.Tk):
 
     def ir_flujo(self):
         alg = self.algoritmos_flujo.get()
-        if self.G is None:
+
+        if self.GD is None:
+
             messagebox.showwarning("Error", "Debe cargar un grafo primero")
             return
         
         if alg == "Ford-Fulkerson":
             self.withdraw()  # Ocultar ventana principal
             from app.gui_flujomaximo.gui_FordF import GrafoFordFulkersonApp
-            ford_window = GrafoFordFulkersonApp(self, self.G, self.nodos)
+
+            ford_window = GrafoFordFulkersonApp(self, self.GD, self.nodos)
+
             ford_window.protocol("WM_DELETE_WINDOW", lambda: self._on_child_close(ford_window))
         else:
             messagebox.showinfo("En desarrollo", f"Algoritmo {alg} no implementado aún")

@@ -44,8 +44,10 @@ class FordFulkerson:
         # Inicializar grafo residual 
         self.residual_graph = nx.DiGraph()
         for u, v, data in self.G.edges(data=True):
-            self.residual_graph.add_edge(u, v, capacity=data['flujo'])  # Cambio clave aquí
-            self.residual_graph.add_edge(v, u, capacity=0)  # Arista inversa
+
+            self.residual_graph.add_edge(u, v, capacity=data['capacity'])
+
+
 
         self.max_flow = 0
         self.flow_paths = []
@@ -75,18 +77,19 @@ class FordFulkerson:
                 'total_flow': self.max_flow + bottleneck
             })
             self.max_flow += bottleneck
-
-        # Calcular flujos en las aristas originales
+        # Calcular flujos en las aristas originales (solo las utilizadas)
         for u, v, data in self.G.edges(data=True):
-            original_capacity = data['flujo'] 
-            residual_capacity = self.residual_graph[u][v]['capacity']
+            original_capacity = data['capacity'] 
+            residual_capacity = self.residual_graph[u][v]['capacity'] if self.residual_graph.has_edge(u, v) else original_capacity
             flow = original_capacity - residual_capacity
-            utilization = (flow / original_capacity) * 100 if original_capacity > 0 else 0
-            self.edge_flows[(u, v)] = {
-                'flow': flow,
-                'capacity': original_capacity,
-                'utilization': utilization
-            }
+            if flow > 0:
+                utilization = (flow / original_capacity) * 100 if original_capacity > 0 else 0
+                self.edge_flows[(u, v)] = {
+                    'flow': flow,
+                    'capacity': original_capacity,
+                    'utilization': utilization
+                }
+
 
         return {
             'max_flow': self.max_flow,
