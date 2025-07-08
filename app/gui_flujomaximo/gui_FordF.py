@@ -85,7 +85,14 @@ class GrafoFordFulkersonApp(tk.Toplevel):
             return
 
         # Calcular flujo máximo
-        ff = FordFulkerson(self.G)
+
+        from models.graph_logic import redireccionar_grafo_favor_flujo
+        G_redirigido = redireccionar_grafo_favor_flujo(self.G, fuente, sumidero)
+        if not nx.has_path(G_redirigido, fuente, sumidero):
+            self.resultado_label.config(text="No existe ningún camino entre los nodos seleccionados.")
+            return
+        ff = FordFulkerson(G_redirigido)
+
         self.resultado = ff.compute_max_flow(fuente, sumidero)
 
         # Mostrar resultados

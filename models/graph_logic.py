@@ -123,12 +123,14 @@ def cargar_grafo_flujo(csv_path):
     df.columns = df.columns.str.strip()
     G = nx.DiGraph()
     for _, row in df.iterrows():
-        origen = normaliza(row['origen'])
-        destino = normaliza(row['destino'])
+        origen = str(row['origen']).strip().title()
+        destino = str(row['destino']).strip().title()
         distancia = float(row['distancia(km)'])
         eta = float(row['ETA(min)'])
         flujo = float(row['flujo (und)']) if 'flujo (und)' in df.columns else 150
-        G.add_edge(origen, destino, distancia=distancia, eta=eta, flujo=flujo)
+
+        G.add_edge(origen, destino, distancia=distancia, eta=eta, capacity=flujo)
+
     # --- ASIGNAR COORDENADAS ---
     for n in G.nodes:
         nodo = normaliza(n)
@@ -143,7 +145,30 @@ def cargar_grafo_flujo(csv_path):
     return G
 
 
-# ----------- Resto de utilidades iguales -----------
+def redireccionar_grafo_favor_flujo(G, fuente, sumidero):
+    """
+    Crea un grafo dirigido solo con las aristas que participan en algún camino
+    de fuente a sumidero, en la dirección en que aparecen en esos caminos.
+    """
+    DG = nx.DiGraph()
+    # Buscar todos los caminos simples de fuente a sumidero
+    try:
+        caminos = nx.all_simple_paths(G, fuente, sumidero)
+        for camino in caminos:
+            for i in range(len(camino) - 1):
+                u, v = camino[i], camino[i+1]
+                if G.has_edge(u, v):
+                    DG.add_edge(u, v, **G[u][v])
+                elif G.has_edge(v, u):
+                    DG.add_edge(v, u, **G[v][u])
+        # Copiar atributos de nodos
+        for n in DG.nodes:
+            DG.nodes[n].update(G.nodes[n])
+    except nx.NetworkXNoPath:
+        pass
+    return DG
+
+
 def info_nodos(G):
     print("NODOS EN EL GRAFO:")
     for nodo in G.nodes():
