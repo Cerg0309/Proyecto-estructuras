@@ -9,7 +9,7 @@ import networkx as nx
 from algorithms.flujomaximo.Ford_Fulkerson import FordFulkerson
 
 class GrafoFordFulkersonApp(tk.Toplevel):
-    def __init__(self, parent, G, nodos):
+    def __init__(self, parent, GD, nodos):
         super().__init__(parent)
         self.title("Algoritmo Ford-Fulkerson - Flujo Máximo")
 
@@ -17,7 +17,7 @@ class GrafoFordFulkersonApp(tk.Toplevel):
         self.geometry(f"{ancho}x{alto}")
         self.minsize(900, 450)
         self.center_window(ancho, alto)
-        self.G = G
+        self.GD = GD  # Grafo de flujo (normalizado)
         self.nodos = nodos
         self.parent = parent
         self.resultado = None
@@ -92,24 +92,24 @@ class GrafoFordFulkersonApp(tk.Toplevel):
         self.ax.clear()
         try:
             pos = {
-                n: (self.G.nodes[n]['pos'][1], self.G.nodes[n]['pos'][0])
-                for n in self.G.nodes if self.G.nodes[n]['pos'] != (0,0)
+                n: (self.GD.nodes[n]['pos'][1], self.GD.nodes[n]['pos'][0])
+                for n in self.GD.nodes if self.GD.nodes[n]['pos'] != (0,0)
             }
-            for n in self.G.nodes:
-                if self.G.nodes[n]['pos'] == (0,0):
+            for n in self.GD.nodes:
+                if self.GD.nodes[n]['pos'] == (0,0):
                     pos[n] = (0,0)
         except Exception as e:
             print("Error en posiciones de nodos:", e)
-            pos = nx.spring_layout(self.G)
+            pos = nx.spring_layout(self.GD)
         
-        nx.draw_networkx_nodes(self.G, pos, ax=self.ax, node_color='skyblue', node_size=650)
-        nx.draw_networkx_labels(self.G, pos, ax=self.ax, font_size=10, font_family="DejaVu Sans")
-        nx.draw_networkx_edges(self.G, pos, ax=self.ax, width=2, edge_color='grey')
+        nx.draw_networkx_nodes(self.GD, pos, ax=self.ax, node_color='skyblue', node_size=650)
+        nx.draw_networkx_labels(self.GD, pos, ax=self.ax, font_size=10, font_family="DejaVu Sans")
+        nx.draw_networkx_edges(self.GD, pos, ax=self.ax, width=2, edge_color='grey')
         
         # Mostrar capacidades en las aristas
-        edge_labels = nx.get_edge_attributes(self.G, 'capacity')
+        edge_labels = nx.get_edge_attributes(self.GD, 'capacity')
         nx.draw_networkx_edge_labels(
-            self.G, pos, ax=self.ax,
+            self.GD, pos, ax=self.ax,
             edge_labels={k: f"{v:.0f}" for k, v in edge_labels.items()},
             font_size=6,
             font_family="DejaVu Sans"
@@ -132,10 +132,9 @@ class GrafoFordFulkersonApp(tk.Toplevel):
             messagebox.showwarning("Error", "Fuente y sumidero deben ser diferentes")
             return
 
-        # Calcular flujo máximo
-
+        # Calcular flujo máximo usando el grafo de flujo (self.GD)
         from models.graph_logic import redireccionar_grafo_favor_flujo
-        G_redirigido = redireccionar_grafo_favor_flujo(self.G, fuente, sumidero)
+        G_redirigido = redireccionar_grafo_favor_flujo(self.GD, fuente, sumidero)
         if not nx.has_path(G_redirigido, fuente, sumidero):
             self.result_text.config(state=tk.NORMAL)
             self.result_text.delete(1.0, tk.END)
@@ -192,19 +191,19 @@ class GrafoFordFulkersonApp(tk.Toplevel):
 
         try:
             pos = {
-                n: (self.G.nodes[n]['pos'][1], self.G.nodes[n]['pos'][0])
-                for n in self.G.nodes if self.G.nodes[n]['pos'] != (0,0)
+                n: (self.GD.nodes[n]['pos'][1], self.GD.nodes[n]['pos'][0])
+                for n in self.GD.nodes if self.GD.nodes[n]['pos'] != (0,0)
             }
-            for n in self.G.nodes:
-                if self.G.nodes[n]['pos'] == (0,0):
+            for n in self.GD.nodes:
+                if self.GD.nodes[n]['pos'] == (0,0):
                     pos[n] = (0,0)
         except Exception as e:
             print("Error en posiciones de nodos:", e)
-            pos = nx.spring_layout(self.G)
+            pos = nx.spring_layout(self.GD)
 
         # Colorear nodos
         node_colors = []
-        for node in self.G.nodes():
+        for node in self.GD.nodes():
             if node == fuente:
                 node_colors.append('green')
             elif node == sumidero:
@@ -213,11 +212,11 @@ class GrafoFordFulkersonApp(tk.Toplevel):
                 node_colors.append('skyblue')
 
         # Dibujar nodos
-        nx.draw_networkx_nodes(self.G, pos, ax=self.ax, 
+        nx.draw_networkx_nodes(self.GD, pos, ax=self.ax, 
                              node_color=node_colors, node_size=650)
 
         # Dibujar etiquetas
-        nx.draw_networkx_labels(self.G, pos, ax=self.ax, font_size=10, font_family="DejaVu Sans")
+        nx.draw_networkx_labels(self.GD, pos, ax=self.ax, font_size=10, font_family="DejaVu Sans")
 
         # Dibujar aristas con flujo
         edge_list = []
@@ -240,7 +239,7 @@ class GrafoFordFulkersonApp(tk.Toplevel):
         # Dibujar aristas con flujo
         if edge_list:
             for i, (u, v) in enumerate(edge_list):
-                nx.draw_networkx_edges(self.G, pos, ax=self.ax, edgelist=[(u, v)],
+                nx.draw_networkx_edges(self.GD, pos, ax=self.ax, edgelist=[(u, v)],
                                      edge_color=edge_colors[i], width=edge_widths[i])
 
         # Etiquetas de flujo
@@ -251,7 +250,7 @@ class GrafoFordFulkersonApp(tk.Toplevel):
                     edge_labels[(u, v)] = f"{data['flow']:.1f}/{data['capacity']:.1f}"
 
         if edge_labels:
-            nx.draw_networkx_edge_labels(self.G, pos, edge_labels, ax=self.ax, font_size=6, font_family="DejaVu Sans")
+            nx.draw_networkx_edge_labels(self.GD, pos, edge_labels, ax=self.ax, font_size=6, font_family="DejaVu Sans")
 
         if self.resultado and 'max_flow' in self.resultado:
             self.ax.set_title(f"Flujo Máximo: {fuente} → {sumidero} = {self.resultado['max_flow']:.2f}", fontsize=18, fontfamily="DejaVu Sans")

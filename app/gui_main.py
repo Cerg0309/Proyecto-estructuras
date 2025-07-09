@@ -21,6 +21,7 @@ class MainApp(tk.Tk):
         self.G = None
         self.GD = None
         self.nodos = []
+        self.nodos_flujo = []  # Nodos normalizados para flujo máximo
         self.tiene_flujo = False  # Nueva variable para rastrear si tiene datos de flujo
         self._crear_layout()
         self._make_responsive()
@@ -154,6 +155,7 @@ class MainApp(tk.Tk):
                 self.G = None
                 self.GD = None
                 self.nodos = []
+                self.nodos_flujo = []
                 self.tiene_flujo = False
                 self.estado_archivo.config(
                     text="Cargando archivo...", 
@@ -175,6 +177,7 @@ class MainApp(tk.Tk):
                 self.G = cargar_grafo(file_path)
                 self.GD = cargar_grafo_flujo(file_path)
                 self.nodos = sorted(list(self.G.nodes()))
+                self.nodos_flujo = sorted(list(self.GD.nodes()))
                 self.visualizar_grafo_completo()
                 
                 # Actualizar indicador visual
@@ -250,7 +253,7 @@ class MainApp(tk.Tk):
             self.withdraw()  # Ocultar ventana principal
             from app.gui_flujomaximo.gui_FordF import GrafoFordFulkersonApp
 
-            ford_window = GrafoFordFulkersonApp(self, self.GD, self.nodos)
+            ford_window = GrafoFordFulkersonApp(self, self.GD, self.nodos_flujo)
             ford_window.protocol("WM_DELETE_WINDOW", lambda: self._on_child_close(ford_window))
         elif alg == "Edmonds-Karp":
             self.withdraw()
